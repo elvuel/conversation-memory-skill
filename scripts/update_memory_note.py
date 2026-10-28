@@ -6,9 +6,9 @@ import os
 import re
 import tempfile
 import time
-from datetime import datetime
 from pathlib import Path
 
+from note_utils import STATUS_VALUES, now_iso, replace_frontmatter_value
 from redaction import SensitiveContentError, require_safe_or_confirmed
 
 
@@ -73,7 +73,11 @@ def parse_args() -> argparse.Namespace:
         help="Bullet line to append. Repeat for multiple bullets.",
     )
     parser.add_argument("--text", help="Optional paragraph or block to append")
-    parser.add_argument("--status", help="Optional status value to write into frontmatter")
+    parser.add_argument(
+        "--status",
+        choices=STATUS_VALUES,
+        help="Optional status value to write into frontmatter",
+    )
     parser.add_argument(
         "--timestamp-prefix",
         action="store_true",
@@ -92,20 +96,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def now_iso() -> str:
-    return datetime.now().astimezone().replace(microsecond=0).isoformat()
-
-
 def atomic_write(path: Path, content: str) -> None:
     with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", dir=path.parent) as handle:
         handle.write(content)
         temp_name = handle.name
     os.replace(temp_name, path)
-
-
-def replace_frontmatter_value(content: str, key: str, value: str) -> str:
-    pattern = re.compile(rf"^({re.escape(key)}:\s*).*$", re.MULTILINE)
-    return pattern.sub(lambda match: f"{match.group(1)}{value}", content, count=1)
 
 
 def update_frontmatter(content: str, timestamp: str, status: str | None) -> str:
@@ -142,18 +137,20 @@ def upsert_section(content: str, title: str, entries: list[str], allow_duplicate
     match = pattern.search(content)
     if match:
         body = match.group(1)
-        existing_lines = {line.rstrip() for line in body.splitlines()}
+        body_lines = body.splitlines()
+        meaningful_lines = [
+            line for line in body_lines if line.strip() and not re.match(r"^\s*-\s*$", line)
+        ]
+        existing_lines = {line.rstrip() for line in meaningful_lines}
         additions = []
         for entry in entries:
             if allow_duplicates or entry.rstrip() not in existing_lines:
                 additions.append(entry)
         if not additions:
             return content
-        new_body = body
-        if new_body and not new_body.endswith("\n"):
-            new_body += "\n"
-        if new_body.strip():
-            new_body += "\n" + "\n".join(additions) + "\n"
+        new_body = "\n".join(meaningful_lines)
+        if new_body:
+            new_body += "\n\n" + "\n".join(additions) + "\n"
         else:
             new_body = "\n".join(additions) + "\n"
         return content[: match.start(1)] + new_body + content[match.end(1) :]
@@ -175,7 +172,7 @@ def main() -> int:
 
     with FileLock(note_path):
         content = note_path.read_text(encoding="utf-8")
-        updated = update_frontmatter(content, timestamp, args.status)
+        updated = content
         if entries:
             updated = upsert_section(
                 updated,
@@ -183,6 +180,13 @@ def main() -> int:
                 entries,
                 args.allow_duplicates,
             )
+        status_changed = bool(
+            args.status and not re.search(rf"^status:\s*{re.escape(args.status)}\s*$", content, flags=re.MULTILINE)
+        )
+        if not status_changed and updated == content:
+            print(f"UNCHANGED {note_path}")
+            return 0
+        updated = update_frontmatter(updated, timestamp, args.status)
         atomic_write(note_path, updated)
 
     print(f"UPDATED {note_path}")

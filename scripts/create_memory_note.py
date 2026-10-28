@@ -2,10 +2,17 @@
 from __future__ import annotations
 
 import argparse
-import re
-from datetime import datetime
 from pathlib import Path
 
+from note_utils import (
+    AmbiguousNoteMatchError,
+    STATUS_VALUES,
+    next_unique_note_path,
+    now_iso,
+    replace_frontmatter_value,
+    resolve_existing_note,
+    slugify,
+)
 from redaction import SensitiveContentError, require_safe_or_confirmed
 
 
@@ -13,21 +20,9 @@ DEFAULT_BASE_DIR = ".codex/memories"
 VALID_MODES = ("repro", "knowledge", "audit")
 
 
-def slugify(text: str) -> str:
-    slug = text.strip().lower()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = re.sub(r"-{2,}", "-", slug).strip("-")
-    return slug or "memory-note"
-
-
-def replace_frontmatter_value(content: str, key: str, value: str) -> str:
-    pattern = re.compile(rf"^({re.escape(key)}:\s*).*$", re.MULTILINE)
-    return pattern.sub(lambda match: f"{match.group(1)}{value}", content, count=1)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Create or reuse a conversation memory note with a consistent template.",
+        description="Create or resume a conversation memory note with a consistent template.",
     )
     parser.add_argument("--title", required=True, help="Human-readable note title")
     parser.add_argument(
@@ -37,7 +32,7 @@ def parse_args() -> argparse.Namespace:
         help="Optional explicit mode metadata. Repeat to include multiple modes.",
     )
     parser.add_argument("--slug", help="Optional file slug override")
-    parser.add_argument("--path", help="Optional explicit output path")
+    parser.add_argument("--path", help="Optional explicit note path")
     parser.add_argument(
         "--workspace",
         default=str(Path.cwd()),
@@ -51,7 +46,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--status",
         default="in-progress",
-        help="Initial status stored in frontmatter",
+        choices=STATUS_VALUES,
+        help="Status stored in frontmatter. Defaults to in-progress.",
     )
     parser.add_argument(
         "--allow-redacted-write",
@@ -97,10 +93,10 @@ def render_note(title: str, modes: list[str] | None, status: str, timestamp: str
     return "\n".join(frontmatter_lines) + "\n\n" + f"# {title}\n\n" + "\n".join(sections)
 
 
-def update_timestamp(content: str, timestamp: str) -> str:
-    if re.search(r"^updated_at:\s*.*$", content, flags=re.MULTILINE):
-        return replace_frontmatter_value(content, "updated_at", timestamp)
-    return content
+def refresh_existing_note(content: str, timestamp: str, status: str) -> str:
+    updated = replace_frontmatter_value(content, "updated_at", timestamp)
+    updated = replace_frontmatter_value(updated, "status", status)
+    return updated
 
 
 def main() -> int:
@@ -114,25 +110,31 @@ def main() -> int:
         )
     except SensitiveContentError as exc:
         raise SystemExit(str(exc))
+
     slug = args.slug or slugify(safe_title)
-    now = datetime.now().astimezone().replace(microsecond=0).isoformat()
+    timestamp = now_iso()
 
     if args.path:
         note_path = Path(args.path).expanduser().resolve()
+        note_path.parent.mkdir(parents=True, exist_ok=True)
     else:
         workspace = Path(args.workspace).expanduser().resolve()
-        note_path = workspace / args.base_dir / f"{now[:10]}-{slug}.md"
-
-    note_path.parent.mkdir(parents=True, exist_ok=True)
+        base_dir = (workspace / args.base_dir).resolve()
+        base_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            existing = resolve_existing_note(base_dir, safe_title)
+        except AmbiguousNoteMatchError as exc:
+            raise SystemExit(str(exc))
+        note_path = existing.path if existing else next_unique_note_path(base_dir, slug, today=timestamp[:10])
 
     if note_path.exists():
         content = note_path.read_text(encoding="utf-8")
-        note_path.write_text(update_timestamp(content, now), encoding="utf-8")
-        print(f"EXISTS {note_path}")
+        note_path.write_text(refresh_existing_note(content, timestamp, args.status), encoding="utf-8")
+        print(f"RESUMED {note_path}")
         return 0
 
     note_path.write_text(
-        render_note(safe_title, modes, args.status, now),
+        render_note(safe_title, modes, args.status, timestamp),
         encoding="utf-8",
     )
     print(f"CREATED {note_path}")

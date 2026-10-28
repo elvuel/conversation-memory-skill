@@ -50,6 +50,12 @@ Default rule:
 
 If the eventual use becomes clear later, enrich the note then. Until that point, keep it general and reusable.
 
+## Task Boundary
+
+Default to one note per task.
+
+Treat work as the same task while the objective, deliverable, and success bar remain materially the same. Start a new note only when the task itself clearly changes.
+
 ## Live Update Rule
 
 The note is a running memory, not a retrospective essay.
@@ -61,6 +67,17 @@ The note is a running memory, not a retrospective essay.
 - always update `updated_at` when the note changes.
 
 A good live update usually adds one or more bullets to an existing section instead of rewriting the whole file.
+
+## Resume And Match Rules
+
+When continuing the same task:
+
+- prefer reusing the existing note over creating a new one;
+- search only within the current workspace boundary;
+- if the existing note is `paused` or `complete`, move it back to `in-progress` when work resumes;
+- if multiple notes look like valid matches, stop and ask the user which one to continue;
+- if no matching note exists, create a new one;
+- if the new file name collides, add a readable numeric suffix such as `-2`.
 
 ## Location Rules
 
@@ -88,6 +105,14 @@ updated_at: 2026-10-28T09:15:00+08:00
 ```
 
 Add optional metadata such as `modes:` or future tags only when the intended use is explicit.
+
+## Status Lifecycle
+
+Keep the lifecycle small and predictable:
+
+- `in-progress` — the task is actively moving;
+- `paused` — the task is temporarily stopped but expected to continue;
+- `complete` — the current success bar has been met.
 
 ## Core Sections
 
@@ -134,6 +159,10 @@ Update the note when one of these happens:
 - a bug is reproduced, diagnosed, fixed, or ruled out;
 - validation succeeds or fails;
 - the task stops and a handoff is needed.
+
+## Failure Handling
+
+Unless note capture is itself the user's primary goal, creation or update failures should be reported without blocking the main task.
 
 ## Quality Bar
 

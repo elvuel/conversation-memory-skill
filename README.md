@@ -5,8 +5,10 @@ A Codex skill for capturing the behavior-changing parts of a conversation and sa
 ## What It Does
 
 - creates a neutral memory note early in a task;
-- keeps the note updated throughout the conversation;
+- reuses the same note when the same task continues;
+- asks the user to choose when more than one existing note looks like a valid match;
 - records durable steps, decisions, validations, risks, and reusable takeaways;
+- prefers append-first updates over rewriting old history;
 - avoids chat noise and redacts sensitive values;
 - detects common sensitive values such as passwords, card numbers, tokens, and API keys;
 - refuses raw writes when sensitive values are detected, and only saves the redacted form after explicit confirmation;
@@ -17,13 +19,14 @@ A Codex skill for capturing the behavior-changing parts of a conversation and sa
 - `SKILL.md` - skill entrypoint and operating rules
 - `agents/openai.yaml` - UI metadata
 - `references/memory-schema.md` - capture rules, note structure, and update mapping
+- `scripts/note_utils.py` - note matching, frontmatter helpers, and file naming logic
 - `scripts/redaction.py` - shared redaction helpers for note content
-- `scripts/create_memory_note.py` - scaffolds a memory note
+- `scripts/create_memory_note.py` - creates or resumes a memory note
 - `scripts/update_memory_note.py` - appends durable updates to the appropriate section
 
 ## Usage
 
-Create a neutral note:
+Create or resume a neutral note for the same task:
 
 ```powershell
 python scripts/create_memory_note.py --title "Issue Reproduction" --workspace D:\projects\some-repo
@@ -38,17 +41,23 @@ python scripts/create_memory_note.py --title "password=abc123" --workspace D:\pr
 Append an update:
 
 ```powershell
-python scripts/update_memory_note.py --path D:\projects\some-repo\.codex\memories\2026-10-28-issue-reproduction.md --section effective-steps --bullet "Reproduced the failure locally." --timestamp-prefix
+python scripts/update_memory_note.py --path D:\projects\some-repo\.codex\memories\2026-10-28-issue-reproduction.md --section effective-steps --bullet "Reproduced the failure locally."
+```
+
+Append a timestamped update only when timing matters:
+
+```powershell
+python scripts/update_memory_note.py --path D:\projects\some-repo\.codex\memories\2026-10-28-issue-reproduction.md --section validation --bullet "Regression test passed after the fix." --timestamp-prefix
 ```
 
 If sensitive content is detected in an update and you want to save the redacted version explicitly:
 
 ```powershell
-python scripts/update_memory_note.py --path D:\projects\some-repo\.codex\memories\2026-10-28-issue-reproduction.md --section effective-steps --bullet "token=xyz and card=4111 1111 1111 1111 were observed" --timestamp-prefix --allow-redacted-write
+python scripts/update_memory_note.py --path D:\projects\some-repo\.codex\memories\2026-10-28-issue-reproduction.md --section effective-steps --bullet "token=xyz and card=4111 1111 1111 1111 were observed" --allow-redacted-write
 ```
 
 ## Validation
 
 ```powershell
-python -m py_compile scripts/redaction.py scripts/create_memory_note.py scripts/update_memory_note.py
+python -m py_compile scripts/note_utils.py scripts/redaction.py scripts/create_memory_note.py scripts/update_memory_note.py
 ```

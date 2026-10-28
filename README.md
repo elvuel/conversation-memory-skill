@@ -1,5 +1,15 @@
 # Conversation Memory Skill
 
+[![Codex Skill](https://img.shields.io/badge/Codex-Skill-412991?logo=openai&logoColor=white)](https://github.com/elvuel/conversation-memory-skill)
+[![Conversation Memory](https://img.shields.io/badge/Purpose-Conversation%20Memory-2ea44f)](https://github.com/elvuel/conversation-memory-skill)
+[![Sensitive Data Redaction](https://img.shields.io/badge/Sensitive%20Data-Redacted-1f6feb)](https://github.com/elvuel/conversation-memory-skill)
+[![Last Commit](https://img.shields.io/github/last-commit/elvuel/conversation-memory-skill)](https://github.com/elvuel/conversation-memory-skill/commits/main)
+[![GitHub Stars](https://img.shields.io/github/stars/elvuel/conversation-memory-skill?style=social)](https://github.com/elvuel/conversation-memory-skill)
+
+> **English**: A Codex skill that captures the behavior-changing parts of a working conversation and saves them as reusable Markdown notes for replay, knowledge capture, audit trails, and later handoff.
+>
+> **中文**：一个面向 Codex 的技能，用来把对话中真正影响执行结果的关键步骤、决策、验证和证据沉淀为可复用的 Markdown 记录，方便后续重现、知识复用、留痕与交接。
+
 A Codex skill for capturing the behavior-changing parts of a conversation and saving them as reusable Markdown notes.
 
 ## What It Does

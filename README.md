@@ -12,6 +12,38 @@
 
 A Codex skill for capturing the behavior-changing parts of a conversation and saving them as reusable Markdown notes.
 
+## Quick Start
+
+Use this skill when you want Codex to keep a durable task note automatically while working.
+
+### 1. Ask Codex normally
+
+```text
+Help me build a TODO web app with React and TypeScript.
+Please automatically record the key steps, decisions, validation results,
+and reusable conclusions for later replay and knowledge reuse.
+```
+
+### 2. Let the skill capture the task note
+
+By default, the skill will create or reuse a note under the current workspace:
+
+```text
+<workspace>/.codex/memories/
+```
+
+### 3. Expect the note to capture only durable changes
+
+The note records:
+
+- objective and success bar;
+- constraints and scope changes;
+- decisions that changed implementation direction;
+- commands, files, outputs, and validations;
+- risks, open questions, and reuse guidance.
+
+The note does **not** keep raw secrets, passwords, tokens, card numbers, or other sensitive values.
+
 ## What It Does
 
 - creates a neutral memory note early in a task;
